@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>✅ Weather App (Fixed)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      max-width: 450px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 25px;
+      font-size: 1.8rem;
+    }
+    .search {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .search input {
+      flex: 1;
+      padding: 12px 15px;
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      font-size: 16px;
+      outline: none;
+      transition: border 0.3s;
+    }
+    .search input:focus {
+      border-color: #667eea;
+    }
+    .search button {
+      padding: 12px 20px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .search button:hover {
+      background: #5568d3;
+    }
+    .error {
+      background: #ffe6e6;
+      color: #c00;
+      padding: 10px 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      display: none;
+      font-size: 14px;
+    }
+    .error.show { display: block; }
+    
+    .weather {
+      text-align: center;
+      animation: fadeIn 0.4s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .city {
+      font-size: 1.8rem;
+      color: #333;
+      margin: 10px 0;
+      font-weight: 600;
+    }
+    .temp {
+      font-size: 3.5rem;
+      color: #667eea;
+      font-weight: 700;
+      margin: 10px 0;
+    }
+    .desc {
+      color: #666;
+      font-size: 1.1rem;
+      margin-bottom: 20px;
+      text-transform: capitalize;
+    }
+    .details {
+      display: flex;
+      justify-content: space-around;
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 12px;
+      margin-top: 10px;
+    }
+    .detail {
+      text-align: center;
+    }
+    .detail-value {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #333;
+    }
+    .detail-label {
+      font-size: 0.9rem;
+      color: #777;
+    }
+    .loading {
+      text-align: center;
+      color: #666;
+      padding: 20px;
+      display: none;
+    }
+    .loading.show { display: block; }
+    .hint {
+      text-align: center;
+      color: #888;
+      font-size: 0.85rem;
+      margin-top: 15px;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🌤️ Weather Dashboard</h1>
+    
+    <div class="search">
+      <input type="text" id="cityInput" placeholder="Enter city (e.g., Chennai)" value="Chennai" />
+      <button onclick="getWeather()">🔍</button>
+    </div>
+    
+    <p class="error" id="error"></p>
+    <p class="loading" id="loading">⏳ Fetching weather...</p>
+    
+    <div class="weather" id="weather" style="display:none">
+      <div class="city" id="city">--</div>
+      <div class="temp" id="temp">--°C</div>
+      <div class="desc" id="desc">--</div>
+      
+      <div class="details">
+        <div class="detail">
+          <div class="detail-value" id="wind">--</div>
+          <div class="detail-label">💨 Wind</div>
+        </div>
+        <div class="detail">
+          <div class="detail-value" id="humidity">--</div>
+          <div class="detail-label">💧 Humidity</div>
+        </div>
+        <div class="detail">
+          <div class="detail-value" id="feels">--</div>
+          <div class="detail-label">🌡️ Feels Like</div>
+        </div>
+      </div>
+    </div>
+    
+    <p class="hint">✅ No API key needed • Works instantly</p>
+  </div>
+
+  <script>
+    // ✅ Using Open-Meteo: FREE, no API key, CORS-enabled
+    async function getWeather() {
+      const city = document.getElementById("cityInput").value.trim();
+      const errorEl = document.getElementById("error");
+      const loadingEl = document.getElementById("loading");
+      const weatherEl = document.getElementById("weather");
+      
+      // Reset UI
+      errorEl.classList.remove("show");
+      errorEl.textContent = "";
+      weatherEl.style.display = "none";
+      
+      if (!city) {
+        errorEl.textContent = "⚠️ Please enter a city name";
+        errorEl.classList.add("show");
+        return;
+      }
+      
+      loadingEl.classList.add("show");
+      
+      try {
+        // Step 1: Geocode city → get latitude/longitude
+        const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`;
+        const geoRes = await fetch(geoUrl);
+        const geoData = await geoRes.json();
+        
+        if (!geoData.results || geoData.results.length === 0) {
+          throw new Error(`🚫 City "${city}" not found. Try spelling or adding country (e.g., "Chennai,IN")`);
+        }
+        
+        const { name, country, latitude, longitude } = geoData.results[0];
+        
+        // Step 2: Get current weather + hourly data for humidity/feels-like
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&hourly=temperature_2m,relative_humidity_2m,apparent_temperature&timezone=auto`;
+        const weatherRes = await fetch(weatherUrl);
+        const weatherData = await weatherRes.json();
+        
+        const current = weatherData.current_weather;
+        const hourly = weatherData.hourly;
+        
+        // Find closest hour index for detailed data
+        const now = new Date();
+        const currentHour = now.getHours();
+        let closestIndex = hourly.time.findIndex(t => new Date(t).getHours() === currentHour);
+        if (closestIndex === -1) closestIndex = 0; // fallback
+        
+        // Update UI
+        document.getElementById("city").textContent = `📍 ${name}, ${country}`;
+        document.getElementById("temp").textContent = `${Math.round(current.temperature)}°C`;
+        document.getElementById("wind").textContent = `${current.windspeed} km/h`;
+        document.getElementById("humidity").textContent = `${hourly.relative_humidity_2m[closestIndex]}%`;
+        document.getElementById("feels").textContent = `${Math.round(hourly.apparent_temperature[closestIndex])}°C`;
+        
+        // Simple weather description based on WMO code
+        const desc = getWeatherDescription(current.weathercode);
+        document.getElementById("desc").textContent = desc;
+        
+        weatherEl.style.display = "block";
+        
+      } catch (err) {
+        console.error("❌ Error:", err);
+        errorEl.textContent = err.message || "⚠️ Failed to fetch weather. Check your connection.";
+        errorEl.classList.add("show");
+      } finally {
+        loadingEl.classList.remove("show");
+      }
+    }
+    
+    // Helper: WMO weather code → readable description
+    function getWeatherDescription(code) {
+      const codes = {
+        0: "Clear sky ☀️",
+        1: "Mainly clear 🌤️", 2: "Partly cloudy ⛅", 3: "Overcast ☁️",
+        45: "Fog 🌫️", 48: "Rime fog 🌫️",
+        51: "Light drizzle 🌦️", 53: "Drizzle 🌦️", 55: "Heavy drizzle 🌧️",
+        61: "Light rain 🌧️", 63: "Rain 🌧️", 65: "Heavy rain 🌧️",
+        71: "Light snow ❄️", 73: "Snow ❄️", 75: "Heavy snow ❄️",
+        95: "Thunderstorm ⚡", 96: "Thunderstorm + hail ⚡"
+      };
+      return codes[code] || "Weather data 🌍";
+    }
+    
+    // Allow Enter key to search
+    document.getElementById("cityInput").addEventListener("keypress", (e) => {
+      if (e.key === "Enter") getWeather();
+    });
+    
+    // Load default city on start
+    window.addEventListener("DOMContentLoaded", getWeather);
+  </script>
+</body>
+</html>
