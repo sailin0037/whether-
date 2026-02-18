@@ -1,4 +1,4 @@
-# whether-
+# whether
 js-weather-app
 
 ## Overview
